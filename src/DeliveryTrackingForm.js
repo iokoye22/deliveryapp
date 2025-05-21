@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, addDoc } from "firebase/firestore";
 import emailjs from "emailjs-com";
+import "./DeliveryTrackingForm.css";
 
 // Firebase configuration (replace with your actual config)
 const firebaseConfig = {
@@ -33,10 +34,12 @@ export default function DeliveryTrackingForm() {
 
   const handleSubmit = async () => {
     try {
+      // Save to Firebase
       await addDoc(collection(db, "deliveries"), form);
 
-      // Send email via EmailJS
+      // Prepare data for email and Google Sheets
       const emailParams = {
+        to_email: "ikeokoye617@gmail.com",
         driver_name: form.driverName,
         pickup_location: form.pickupLocation,
         pickup_time: form.pickupTime,
@@ -45,6 +48,7 @@ export default function DeliveryTrackingForm() {
         bags_returned: form.bagsReturned,
       };
 
+      // Send email via EmailJS
       await emailjs.send(
         "YOUR_SERVICE_ID",
         "YOUR_TEMPLATE_ID",
@@ -52,7 +56,10 @@ export default function DeliveryTrackingForm() {
         "YOUR_PUBLIC_KEY"
       );
 
-      alert("Delivery data saved and email sent successfully!");
+      // Submit to Google Sheets via a form submission
+      await submitToGoogleSheets(form);
+
+      alert("Delivery data saved, email sent, and added to Google Sheets successfully!");
 
       setForm({
         driverName: "",
@@ -67,71 +74,117 @@ export default function DeliveryTrackingForm() {
     }
   };
 
+  // Function to submit data to Google Sheets
+  const submitToGoogleSheets = async (formData) => {
+    // Create a FormData object to submit to a Google Form
+    // Replace the URL below with your actual Google Form submission URL
+    const googleFormUrl = "https://docs.google.com/forms/d/e/YOUR_GOOGLE_FORM_ID/formResponse";
+    
+    // Map your form fields to Google Form field names
+    // You'll need to inspect your Google Form to get the exact field names (usually entry.1234567890)
+    const formEntries = new FormData();
+    formEntries.append("entry.1", formData.driverName);
+    formEntries.append("entry.2", formData.pickupLocation);
+    formEntries.append("entry.3", formData.pickupTime);
+    formEntries.append("entry.4", formData.bagsPickedUp);
+    formEntries.append("entry.5", formData.returnTime);
+    formEntries.append("entry.6", formData.bagsReturned);
+    
+    // Submit the form data
+    try {
+      // Using fetch with no-cors mode since this is a cross-origin request
+      await fetch(googleFormUrl, {
+        method: "POST",
+        mode: "no-cors",
+        body: formEntries
+      });
+      console.log("Data submitted to Google Sheets");
+    } catch (error) {
+      console.error("Error submitting to Google Sheets:", error);
+      // We don't throw the error here to prevent it from blocking the rest of the submission process
+    }
+  };
+
   return (
-    <div className="p-4 max-w-md mx-auto bg-white rounded-2xl shadow-md mt-6">
-      <h2 className="text-xl font-bold text-center text-blue-600 mb-4">Delivery Tracking</h2>
+    <div className="delivery-form">
+      <h2 className="form-title">Delivery Tracking</h2>
+      
+      <div className="form-container">
+        <div className="form-group">
+          <label className="form-label">Driver Name</label>
+          <input
+            name="driverName"
+            value={form.driverName}
+            onChange={handleChange}
+            className="form-input"
+            placeholder="Enter driver name"
+          />
+        </div>
 
-      <label className="block mb-2 text-sm font-medium">Driver Name</label>
-      <input
-        name="driverName"
-        value={form.driverName}
-        onChange={handleChange}
-        className="w-full mb-4 p-2 border rounded"
-        placeholder="Enter driver name"
-      />
+        <div className="form-group">
+          <label className="form-label">Pickup Location</label>
+          <select
+            name="pickupLocation"
+            value={form.pickupLocation}
+            onChange={handleChange}
+            className="form-select"
+          >
+            <option value="Whittier Health Pharmacy">Whittier Health Pharmacy</option>
+            <option value="Boston Healthcare for the Homeless Pharmacy">Boston Healthcare for the Homeless Pharmacy</option>
+          </select>
+        </div>
 
-      <label className="block mb-2 text-sm font-medium">Pickup Location</label>
-      <select
-        name="pickupLocation"
-        value={form.pickupLocation}
-        onChange={handleChange}
-        className="w-full mb-4 p-2 border rounded"
-      >
-        <option value="Whittier Health Pharmacy">Whittier Health Pharmacy</option>
-      </select>
+        <div className="form-group">
+          <label className="form-label">Pickup Time</label>
+          <input
+            type="datetime-local"
+            name="pickupTime"
+            value={form.pickupTime}
+            onChange={handleChange}
+            className="form-input"
+          />
+        </div>
 
-      <label className="block mb-2 text-sm font-medium">Pickup Time</label>
-      <input
-        type="datetime-local"
-        name="pickupTime"
-        value={form.pickupTime}
-        onChange={handleChange}
-        className="w-full mb-4 p-2 border rounded"
-      />
+        <div className="form-group">
+          <label className="form-label">Bags Picked Up</label>
+          <input
+            type="number"
+            name="bagsPickedUp"
+            value={form.bagsPickedUp}
+            onChange={handleChange}
+            className="form-input"
+          />
+        </div>
 
-      <label className="block mb-2 text-sm font-medium">Bags Picked Up</label>
-      <input
-        type="number"
-        name="bagsPickedUp"
-        value={form.bagsPickedUp}
-        onChange={handleChange}
-        className="w-full mb-4 p-2 border rounded"
-      />
+        <div className="form-group">
+          <label className="form-label">Return Time</label>
+          <input
+            type="datetime-local"
+            name="returnTime"
+            value={form.returnTime}
+            onChange={handleChange}
+            className="form-input"
+          />
+        </div>
 
-      <label className="block mb-2 text-sm font-medium">Return Time</label>
-      <input
-        type="datetime-local"
-        name="returnTime"
-        value={form.returnTime}
-        onChange={handleChange}
-        className="w-full mb-4 p-2 border rounded"
-      />
+        <div className="form-group">
+          <label className="form-label">Bags Returned</label>
+          <input
+            type="number"
+            name="bagsReturned"
+            value={form.bagsReturned}
+            onChange={handleChange}
+            className="form-input"
+          />
+        </div>
 
-      <label className="block mb-2 text-sm font-medium">Bags Returned</label>
-      <input
-        type="number"
-        name="bagsReturned"
-        value={form.bagsReturned}
-        onChange={handleChange}
-        className="w-full mb-4 p-2 border rounded"
-      />
-
-      <button
-        onClick={handleSubmit}
-        className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
-      >
-        Save Entry
-      </button>
+        <button
+          onClick={handleSubmit}
+          className="form-button"
+        >
+          Save Entry
+        </button>
+      </div>
     </div>
   );
 }
