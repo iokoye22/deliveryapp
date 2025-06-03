@@ -1,23 +1,18 @@
-import React, { useState } from "react";
-import { initializeApp } from "firebase/app";
-import { getFirestore, collection, addDoc } from "firebase/firestore";
+import React, { useState, useEffect } from "react";
+//import { getFirestore, collection, addDoc } from "firebase/firestore";
 import emailjs from "emailjs-com";
 import "./DeliveryTrackingForm.css";
+// import { app } from "./firebase"; // Import the Firebase app instance
 
-// Firebase configuration (replace with your actual config)
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID",
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+//const db = getFirestore(app);
 
 export default function DeliveryTrackingForm() {
+  useEffect(() => {
+    emailjs.init("xD9jHwHxB7nQPFl0h"); // Replace with your actual EmailJS public key
+  }, []);
+
+  const [showThankYou, setShowThankYou] = useState(false);
+
   const [form, setForm] = useState({
     driverName: "",
     pickupLocation: "Whittier Health Pharmacy",
@@ -33,33 +28,35 @@ export default function DeliveryTrackingForm() {
   };
 
   const handleSubmit = async () => {
+    const requiredFields = ["driverName", "pickupTime", "bagsPickedUp", "returnTime", "bagsReturned"];
+    const emptyFields = requiredFields.filter(field => !form[field]);
+
+    if (emptyFields.length > 0) {
+      alert(`Please fill in all required fields: ${emptyFields.join(", ")}`);
+      return;
+    }
+
     try {
-      // Save to Firebase
-      await addDoc(collection(db, "deliveries"), form);
-
-      // Prepare data for email and Google Sheets
-      const emailParams = {
-        to_email: "ikeokoye617@gmail.com",
-        driver_name: form.driverName,
-        pickup_location: form.pickupLocation,
-        pickup_time: form.pickupTime,
-        bags_picked_up: form.bagsPickedUp,
-        return_time: form.returnTime,
-        bags_returned: form.bagsReturned,
-      };
-
-      // Send email via EmailJS
       await emailjs.send(
-        "YOUR_SERVICE_ID",
-        "YOUR_TEMPLATE_ID",
-        emailParams,
-        "YOUR_PUBLIC_KEY"
+        "service_iezvzeg", 
+        "template_96ly2xd",
+        {
+          driver_name: form.driverName,
+          pickup_location: form.pickupLocation,
+          pickup_time: form.pickupTime,
+          bags_picked_up: form.bagsPickedUp,
+          return_time: form.returnTime,
+          bags_returned: form.bagsReturned,
+          message: `New Delivery Entry Submitted!\n\nDriver: ${form.driverName}\nPickup Location: ${form.pickupLocation}\nPickup Time: ${form.pickupTime}\nBags Picked Up: ${form.bagsPickedUp}\n\nReturn Time: ${form.returnTime}\nBags Returned: ${form.bagsReturned}\n\n Please verify and log this delivery.`,
+          subject: `New Delivery for: ${form.returnTime}`
+        },
+        "xD9jHwHxB7nQPFl0h"
       );
 
-      // Submit to Google Sheets via a form submission
-      await submitToGoogleSheets(form);
+      //await addDoc(collection(db, "deliveries"), form);
 
-      alert("Delivery data saved, email sent, and added to Google Sheets successfully!");
+      setShowThankYou(true);
+      setTimeout(() => setShowThankYou(false), 3000);
 
       setForm({
         driverName: "",
@@ -70,45 +67,28 @@ export default function DeliveryTrackingForm() {
         bagsReturned: "",
       });
     } catch (error) {
-      alert("Error: " + error.message);
-    }
-  };
-
-  // Function to submit data to Google Sheets
-  const submitToGoogleSheets = async (formData) => {
-    // Create a FormData object to submit to a Google Form
-    // Replace the URL below with your actual Google Form submission URL
-    const googleFormUrl = "https://docs.google.com/forms/d/e/YOUR_GOOGLE_FORM_ID/formResponse";
-    
-    // Map your form fields to Google Form field names
-    // You'll need to inspect your Google Form to get the exact field names (usually entry.1234567890)
-    const formEntries = new FormData();
-    formEntries.append("entry.1", formData.driverName);
-    formEntries.append("entry.2", formData.pickupLocation);
-    formEntries.append("entry.3", formData.pickupTime);
-    formEntries.append("entry.4", formData.bagsPickedUp);
-    formEntries.append("entry.5", formData.returnTime);
-    formEntries.append("entry.6", formData.bagsReturned);
-    
-    // Submit the form data
-    try {
-      // Using fetch with no-cors mode since this is a cross-origin request
-      await fetch(googleFormUrl, {
-        method: "POST",
-        mode: "no-cors",
-        body: formEntries
-      });
-      console.log("Data submitted to Google Sheets");
-    } catch (error) {
-      console.error("Error submitting to Google Sheets:", error);
-      // We don't throw the error here to prevent it from blocking the rest of the submission process
+      console.error("Error submitting form:", error);
+      alert("Submission failed. Please try again.");
     }
   };
 
   return (
     <div className="delivery-form">
+      {showThankYou && (
+        <div className="popup-overlay">
+          <div className="popup-content">
+            <div className="popup-icon">✅</div>
+            <h3 className="popup-title">Thank You!</h3>
+            <p className="popup-message">
+              Thank you for your delivery service! Your entry has been successfully submitted and recorded.
+            </p>
+            <button className="popup-button" onClick={() => setShowThankYou(false)}>Close</button>
+          </div>
+        </div>
+      )}
+
       <h2 className="form-title">Delivery Tracking</h2>
-      
+
       <div className="form-container">
         <div className="form-group">
           <label className="form-label">Driver Name</label>
@@ -178,11 +158,8 @@ export default function DeliveryTrackingForm() {
           />
         </div>
 
-        <button
-          onClick={handleSubmit}
-          className="form-button"
-        >
-          Save Entry
+        <button onClick={handleSubmit} className="form-button">
+          Submit Entry
         </button>
       </div>
     </div>
