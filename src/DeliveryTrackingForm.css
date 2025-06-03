@@ -162,6 +162,11 @@
     font-size: 16px;
     min-height: 48px;
     border-radius: 6px;
+    width: 100%;
+    box-sizing: border-box;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
   }
 
   .form-button {
@@ -169,6 +174,12 @@
     font-size: 16px;
     margin-top: 20px;
     min-height: 48px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .form-group {
+    width: 100%;
   }
 
   .form-label {
